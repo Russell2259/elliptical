@@ -22,6 +22,7 @@ const usernameModal = reactive({
 });
 const soundsEnabled = ref(localStorage.getItem('sounds') === null ? true : localStorage.getItem('sounds') === 'true');
 const messageSound = new Audio('/sounds/message.wav');
+const messagesScrollable = ref(false);
 let latestMessage = '';
 
 socket.off();
@@ -66,12 +67,22 @@ socket.on('room', (room) => {
 });
 
 socket.on('message', (message) => {
+    const messages = document.querySelector('#messages');
+    const shouldScroll = messages.offsetHeight == 0 || messages.scrollTop === messages.scrollHeight - messages.offsetHeight;
+    
     if (soundsEnabled && latestMessage !== message.message) messageSound.play();
     
     context.messages.push({
         id: message.id,
         highlight: message.highlight || false,
         msg: `<p>${sanitize(message.message)}</p>`
+    });
+    
+    // Wait for stuff to render
+    setTimeout(() => {
+        messagesScrollable.value = messages.scrollHeight > messages.clientHeight;
+        
+        if (shouldScroll) messages.scrollTop = messages.scrollHeight;
     });
 });
 
@@ -426,8 +437,8 @@ onMounted(() => {
                 </div>
             </div>
 
-            <div v-if="context.roomid" class="flex-1 p-4 overflow-y-auto rounded-lg">
-                <div v-if="context.rooms.find(({ id }) => context.roomid === id).private" class="p-4 px-6 top-0 right-0 bg-gray-800 flex justify-between items-center rounded-lg absolute">
+            <div v-if="context.roomid" class="flex-1 p-4 overflow-y-auto" id="messages">
+                <div v-if="context.rooms.find(({ id }) => context.roomid === id).private" class="p-4 px-6 top-0 right-0 bg-gray-800 flex justify-between items-center rounded-lg absolute" :class="messagesScrollable ? 'mr-8' : ''">
                     <button @click="copyCode"
                         class="px-5 py-2.5 mr-3 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm font-bold">
                         {{ context.rooms.find(({ id }) => context.roomid === id).code }}
